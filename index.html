@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Мои Конфигурации</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: #f4f7f6; color: #333; display: flex; flex-direction: column; align-items: center; padding: 40px 20px; margin: 0; }
+        .container { max-width: 500px; width: 100%; background: white; padding: 30px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); text-align: center; }
+        h1 { margin-top: 0; font-size: 22px; color: #111; margin-bottom: 10px; }
+        p { color: #666; font-size: 14px; margin-bottom: 30px; }
+        .config-item { background: #f8fafc; border: 1px solid #e2e8f0; padding: 15px; border-radius: 12px; margin-bottom: 15px; display: flex; flex-direction: column; gap: 10px; align-items: center; }
+        .config-name { font-weight: bold; font-size: 15px; color: #1e293b; word-break: break-all; }
+        button { background: #007bff; color: white; border: none; padding: 10px 20px; font-size: 14px; font-weight: bold; border-radius: 8px; cursor: pointer; width: 100%; transition: all 0.2s; }
+        button:hover { background: #0056b3; }
+        button.success { background: #28a745; }
+        .loading { font-size: 16px; color: #666; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Установка Конфигураций</h1>
+    <p>Выберите нужный конфиг, нажмите кнопку «Скопировать» и вставьте полученный текст в приложение happ или incy.</p>
+    <div id="configsList" class="loading">Загрузка конфигураций...</div>
+</div>
+
+<script>
+    // Ссылка на твой raw Config.json с гитхаба
+    const GIST_URL = 'https://gist.githubusercontent.com/magicgpt009/5f695d7a9fb5057a1ea1371c5fb8a26d/raw/71542378ef5ad43f218ea92b5b5552a7454705c2/Config.json';
+
+    async function loadConfigs() {
+        const listContainer = document.getElementById('configsList');
+        try {
+            const response = await fetch(GIST_URL);
+            const textData = await response.text();
+            
+            // Разбиваем текст из файла Config.json на отдельные строчки-ссылки
+            const links = textData.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+            
+            if(links.length === 0) {
+                listContainer.innerText = 'Конфигурации не найдены.';
+                return;
+            }
+            
+            listContainer.innerHTML = ''; // Очищаем текст загрузки
+            
+            links.forEach((url, index) => {
+                // Создаем блок для каждого конфига
+                const itemDiv = document.createElement('div');
+                itemDiv.className = 'config-item';
+                
+                // Извлекаем имя или порядковый номер
+                const configName = `Конфигурация #${index + 1}`;
+                
+                itemDiv.innerHTML = `
+                    <div class="config-name">${configName}</div>
+                    <button onclick="copyConfigContent('${url}', this)">Скопировать конфиг</button>
+                `;
+                listContainer.appendChild(itemDiv);
+            });
+            
+        } catch (err) {
+            listContainer.innerText = 'Ошибка при загрузке списка конфигураций.';
+            console.error(err);
+        }
+    }
+
+    async function copyConfigContent(targetUrl, button) {
+        const originalText = button.innerText;
+        try {
+            button.innerText = 'Загрузка текста...';
+            // Переходим по внутренней ссылке (например, на gistfile1.txt), чтобы забрать сам текст конфига
+            const response = await fetch(targetUrl);
+            const finalConfigText = await response.text();
+            
+            // Копируем этот текст в буфер обмена пользователя
+            await navigator.clipboard.writeText(finalConfigText);
+            
+            button.innerText = 'Успешно скопировано! ✓';
+            button.classList.add('success');
+            
+            setTimeout(() => {
+                button.innerText = originalText;
+                button.classList.remove('success');
+            }, 2500);
+        } catch (err) {
+            alert('Не удалось скопировать. Возможно, браузер заблокировал доступ к буферу обмена.');
+            button.innerText = originalText;
+        }
+    }
+
+    // Запуск функции при загрузке страницы
+    loadConfigs();
+</script>
+
+</body>
+</html>
