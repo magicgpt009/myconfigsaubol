@@ -3,39 +3,82 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Мои Конфигурации</title>
+    <title>Приватные Конфигурации</title>
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: #f4f7f6; color: #333; display: flex; flex-direction: column; align-items: center; padding: 40px 20px; margin: 0; }
         .container { max-width: 500px; width: 100%; background: white; padding: 30px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); text-align: center; }
         h1 { margin-top: 0; font-size: 22px; color: #111; margin-bottom: 10px; }
         p { color: #666; font-size: 14px; margin-bottom: 30px; }
+        
+        /* Стили для экрана блокировки */
+        #authScreen { display: flex; flex-direction: column; gap: 15px; align-items: center; }
+        input[type="password"] { padding: 12px; width: 80%; border: 1px solid #ccc; border-radius: 8px; font-size: 16px; text-align: center; }
+        
+        /* Стили для списка конфигов */
+        #contentScreen { display: none; }
         .config-item { background: #f8fafc; border: 1px solid #e2e8f0; padding: 15px; border-radius: 12px; margin-bottom: 15px; display: flex; flex-direction: column; gap: 10px; align-items: center; }
         .config-name { font-weight: bold; font-size: 15px; color: #1e293b; word-break: break-all; }
-        button { background: #007bff; color: white; border: none; padding: 10px 20px; font-size: 14px; font-weight: bold; border-radius: 8px; cursor: pointer; width: 100%; transition: all 0.2s; }
+        
+        button { background: #007bff; color: white; border: none; padding: 12px 24px; font-size: 14px; font-weight: bold; border-radius: 8px; cursor: pointer; width: 100%; transition: all 0.2s; }
         button:hover { background: #0056b3; }
         button.success { background: #28a745; }
-        .loading { font-size: 16px; color: #666; }
+        .error-msg { color: #dc3545; font-size: 14px; display: none; font-weight: bold; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>Установка Конфигураций</h1>
-    <p>Выберите нужный конфиг, нажмите кнопку «Скопировать» и вставьте полученный текст в приложение happ или incy.</p>
-    <div id="configsList" class="loading">Загрузка конфигураций...</div>
+    <div id="authScreen">
+        <h1>Доступ ограничен</h1>
+        <p>Введите секретный пин-код или пароль для получения доступа к конфигурациям.</p>
+        <input type="password" id="passInput" placeholder="Введите пароль...">
+        <button id="authBtn">Войти</button>
+        <div id="errorBlock" class="error-msg">Неверный пароль! Доступ заблокирован.</div>
+    </div>
+
+    <div id="contentScreen">
+        <h1>Ваши Конфигурации</h1>
+        <p>Нажмите кнопку «Скопировать», а затем вставьте настройки в приложение.</p>
+        <div id="configsList">Загрузка данных...</div>
+    </div>
 </div>
 
 <script>
-    // Ссылка на твой raw Config.json с гитхаба
+    // НАСТРОЙКА: Твой секретный пароль, который ты дашь только доверенным людям
+    const SECRET_PASSWORD = 'SauboL777'; 
+
+    // Твоя ссылка на Gist
     const GIST_URL = 'https://gist.githubusercontent.com/magicgpt009/5f695d7a9fb5057a1ea1371c5fb8a26d/raw/71542378ef5ad43f218ea92b5b5552a7454705c2/Config.json';
+
+    const authScreen = document.getElementById('authScreen');
+    const contentScreen = document.getElementById('contentScreen');
+    const passInput = document.getElementById('passInput');
+    const authBtn = document.getElementById('authBtn');
+    const errorBlock = document.getElementById('errorBlock');
+
+    // Проверка пароля при клике
+    authBtn.addEventListener('click', checkPassword);
+    // Проверка пароля при нажатии Enter в поле ввода
+    passInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') checkPassword(); });
+
+    function checkPassword() {
+        if (passInput.value === SECRET_PASSWORD) {
+            // Если пароль верный: скрываем авторизацию, показываем контент и запускаем загрузку
+            authScreen.style.display = 'none';
+            contentScreen.style.style.display = 'block';
+            loadConfigs();
+        } else {
+            // Если неверный: показываем ошибку
+            errorBlock.style.display = 'block';
+            passInput.value = '';
+        }
+    }
 
     async function loadConfigs() {
         const listContainer = document.getElementById('configsList');
         try {
             const response = await fetch(GIST_URL);
             const textData = await response.text();
-            
-            // Разбиваем текст из файла Config.json на отдельные строчки-ссылки
             const links = textData.split('\n').map(line => line.trim()).filter(line => line.length > 0);
             
             if(links.length === 0) {
@@ -43,14 +86,11 @@
                 return;
             }
             
-            listContainer.innerHTML = ''; // Очищаем текст загрузки
+            listContainer.innerHTML = '';
             
             links.forEach((url, index) => {
-                // Создаем блок для каждого конфига
                 const itemDiv = document.createElement('div');
                 itemDiv.className = 'config-item';
-                
-                // Извлекаем имя или порядковый номер
                 const configName = `Конфигурация #${index + 1}`;
                 
                 itemDiv.innerHTML = `
@@ -61,20 +101,17 @@
             });
             
         } catch (err) {
-            listContainer.innerText = 'Ошибка при загрузке списка конфигураций.';
-            console.error(err);
+            listContainer.innerText = 'Ошибка при загрузке конфигураций.';
         }
     }
 
     async function copyConfigContent(targetUrl, button) {
         const originalText = button.innerText;
         try {
-            button.innerText = 'Загрузка текста...';
-            // Переходим по внутренней ссылке (например, на gistfile1.txt), чтобы забрать сам текст конфига
+            button.innerText = 'Загрузка...';
             const response = await fetch(targetUrl);
             const finalConfigText = await response.text();
             
-            // Копируем этот текст в буфер обмена пользователя
             await navigator.clipboard.writeText(finalConfigText);
             
             button.innerText = 'Успешно скопировано! ✓';
@@ -85,13 +122,10 @@
                 button.classList.remove('success');
             }, 2500);
         } catch (err) {
-            alert('Не удалось скопировать. Возможно, браузер заблокировал доступ к буферу обмена.');
+            alert('Ошибка копирования.');
             button.innerText = originalText;
         }
     }
-
-    // Запуск функции при загрузке страницы
-    loadConfigs();
 </script>
 
 </body>
